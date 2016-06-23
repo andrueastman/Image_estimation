@@ -42,6 +42,6 @@ cv2.waitKey(0)
 # find contours in the edge map
 cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
 cnts = cnts[0] if imutils.is_cv2() else cnts[1]
-cv2.drawContours(image, cnts, -1, (0,255,0), 3)
-cv2.imshow("Image", image)
+cv2.drawContours(gray, cnts, -1, (0,255,0), 3)
+cv2.imshow("Image", gray)
 cv2.waitKey(0)
