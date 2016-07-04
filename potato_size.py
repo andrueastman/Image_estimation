@@ -13,6 +13,7 @@ import cv2
 def midpoint(ptA, ptB):
 	return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
 
+
 # construct the argument parse and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--image", required=True, help="path to the input image")
@@ -22,37 +23,49 @@ args = vars(ap.parse_args())
 # load the image, and resize it to 640 by 480 px
 image = cv2.imread(args["image"])
 newimage = cv2.resize(image,(640,480))
-cv2.imshow("Image", newimage)
-cv2.waitKey(0)
+#cv2.imshow("Image", newimage)
+#cv2.waitKey(0)
 
-# convert image to grayscale and slightly blur 
-gray = cv2.cvtColor(newimage, cv2.COLOR_BGR2GRAY)
-gray = cv2.GaussianBlur(gray, (7, 7), 0)
-cv2.imshow("Image", gray)
-cv2.waitKey(0)
+#image thresholds for lower and upper bounds for potato colors
+lower = np.array([0, 100, 100], dtype = "uint8")
+upper = np.array([10, 255, 255], dtype = "uint8")
+
+#apply a series of erosions to dilations
+kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+skinMask = cv2.erode(newimage, kernel, iterations = 1)
+skinMask = cv2.dilate(skinMask, kernel, iterations = 1)
+
+#blur the image to reduce noise
+newimage = cv2.GaussianBlur(skinMask, (3, 3), 0)
+mask = cv2.inRange(newimage, lower, upper)
+output = cv2.bitwise_and(newimage, newimage, mask = mask)
+
+#cv2.imshow("OUTPUT", output)
+#cv2.waitKey(0)
 
 # perform edge detection, then perform a dilation + erosion to
 # close gaps in between object edges
-edged = cv2.Canny(gray, 50, 100)
-edged = cv2.dilate(edged, None, iterations=1)
-edged = cv2.erode(edged, None, iterations=1)
-cv2.imshow("Image", edged)
+edged = cv2.Canny(output,100,200)
+cv2.imshow("EDGES", edged)
 cv2.waitKey(0)
 
 # find contours in the edge map
 cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
 cnts = cnts[0] if imutils.is_cv2() else cnts[1]
-cv2.drawContours(gray, cnts, -1, (0,255,0), 3)
-cv2.imshow("Image", gray)
+cv2.drawContours(newimage, cnts, -1, (0,255,0), 3)
+cv2.imshow("Image", newimage)
 cv2.waitKey(0)
+
+#print out the number of contours found
+print(cnts.size())
 
 for c in cnts:
 	# ingore small contours
-	if cv2.contourArea(c) < 1000:
+	if cv2.contourArea(c) < 400:
 		continue
 
 	# compute the rotated bounding box of the contour
-	orig = gray.copy()
+	orig = newimage.copy()
 	box = cv2.minAreaRect(c)
 	box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
 	box = np.array(box, dtype="int")
@@ -103,8 +116,8 @@ for c in cnts:
 	#	pixelsPerMetric = dB / args["width"]
 
 	# compute the size of the object
-	dimA = "length 1"#dA / pixelsPerMetric
-	dimB = "length 2"#dB / pixelsPerMetric
+	dimA = dA #dA / pixelsPerMetric
+	dimB = dB #dB / pixelsPerMetric
 
 	# draw the object sizes on the image
 	cv2.putText(orig, "{:}".format(dimA),
