@@ -57,7 +57,7 @@ cv2.imshow("Image", newimage)
 cv2.waitKey(0)
 
 #print out the number of contours found
-print(cnts.size())
+print(len(cnts))
 
 for c in cnts:
 	# ingore small contours
